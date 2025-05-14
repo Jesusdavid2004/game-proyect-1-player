@@ -2,12 +2,6 @@ pipeline {
   agent any
 
   stages {
-    stage('Clonar repositorio') {
-      steps {
-        git 'https://github.com/tu-usuario/tu-repo.git'
-      }
-    }
-
     stage('Instalar dependencias') {
       steps {
         sh 'npm install'
