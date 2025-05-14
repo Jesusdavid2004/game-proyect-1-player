@@ -4,19 +4,25 @@ pipeline {
   stages {
     stage('Instalar dependencias') {
       steps {
-        bat 'npm install'
+        dir('game-project') {
+          bat 'npm install'
+        }
       }
     }
 
     stage('Ejecutar pruebas unitarias') {
       steps {
-        bat 'npm test'
+        dir('game-project') {
+          bat 'npm test'
+        }
       }
     }
 
     stage('Construir proyecto') {
       steps {
-        bat 'npm run build'
+        dir('game-project') {
+          bat 'npm run build'
+        }
       }
     }
   }
