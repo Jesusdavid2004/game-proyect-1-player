@@ -4,19 +4,19 @@ pipeline {
   stages {
     stage('Instalar dependencias') {
       steps {
-        sh 'npm install'
+        bat 'npm install'
       }
     }
 
     stage('Ejecutar pruebas unitarias') {
       steps {
-        sh 'npm test'
+        bat 'npm test'
       }
     }
 
     stage('Construir proyecto') {
       steps {
-        sh 'npm run build'
+        bat 'npm run build'
       }
     }
   }
