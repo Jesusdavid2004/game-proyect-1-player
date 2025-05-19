@@ -1,66 +1,82 @@
-/**
- * Resources.test.js
- *
- * Prueba unitaria para la clase Resources.js original del proyecto.
- */
+// src/__tests__/Resources.test.js
+import Resources from '../src/Experience/Utils/Resources'; // Asegúrate que esta ruta es la correcta
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-import Resources from '../src/Experience/Utils/Resources.js'
-
-// Mock de EventEmitter
-jest.mock('../src/Experience/Utils/EventEmitter.js', () => {
-  return class {
-    constructor() {
-      this.callbacks = {};
-    }
-    on(event, callback) {
-      this.callbacks[event] = callback;
-    }
-    trigger(event) {
-      if (this.callbacks[event]) {
-        this.callbacks[event]();
-      }
-    }
-  };
-});
-
-// Mock de loaders de Three.js
+// Mocks necesarios
 jest.mock('three', () => ({
   TextureLoader: jest.fn().mockImplementation(() => ({
-    load: jest.fn((_, onLoad) => {
-      setTimeout(() => onLoad('mock-texture'), 10);
-    }),
+    load: jest.fn((path, onLoad) => onLoad(`Texture: ${path}`))
   })),
   CubeTextureLoader: jest.fn().mockImplementation(() => ({
-    load: jest.fn((_, onLoad) => {
-      setTimeout(() => onLoad('mock-cubetexture'), 10);
-    }),
-  })),
+    load: jest.fn((path, onLoad) => onLoad(`CubeTexture: ${path}`))
+  }))
 }));
 
 jest.mock('three/examples/jsm/loaders/GLTFLoader.js', () => ({
   GLTFLoader: jest.fn().mockImplementation(() => ({
-    load: jest.fn((_, onLoad) => {
-      setTimeout(() => onLoad('mock-model'), 10);
-    }),
-  })),
+    load: jest.fn((path, onLoad) => onLoad(`GLTF: ${path}`))
+  }))
 }));
 
-describe('Resources.js (clase original)', () => {
-  test('Carga recursos y emite evento "ready"', (done) => {
-    const sources = [
-      { name: 'model1', type: 'gltfModel', path: '/models/m1.glb' },
-      { name: 'texture1', type: 'texture', path: '/textures/t1.jpg' },
-      { name: 'cube1', type: 'cubeTexture', path: '/textures/cube/' }
-    ];
+// Fuente de prueba
+const mockSources = [
+  { name: 'modelo1', type: 'gltfModel', path: '/models/modelo1.glb' },
+  { name: 'textura1', type: 'texture', path: '/textures/textura1.jpg' },
+  { name: 'cubemap1', type: 'cubeTexture', path: '/textures/cubemap1/' }
+];
 
-    const resources = new Resources(sources);
+describe('Resources', () => {
+  let resources;
 
-    resources.on('ready', () => {
-      expect(Object.keys(resources.items)).toHaveLength(3);
-      expect(resources.items.model1).toBe('mock-model');
-      expect(resources.items.texture1).toBe('mock-texture');
-      expect(resources.items.cube1).toBe('mock-cubetexture');
-      done(); // finaliza la prueba asincrónica
-    });
+  beforeEach(() => {
+    resources = new Resources(mockSources);
+  });
+
+  test('debería inicializar con los loaders definidos', () => {
+    expect(resources.loaders).toBeDefined();
+    expect(resources.loaders.gltfLoader).toBeDefined();
+    expect(resources.loaders.textureLoader).toBeDefined();
+    expect(resources.loaders.cubeTextureLoader).toBeDefined();
+  });
+
+  test('debería cargar correctamente todos los recursos en items', () => {
+    expect(Object.keys(resources.items).length).toBe(3);
+    expect(resources.items['modelo1']).toBe('GLTF: /models/modelo1.glb');
+    expect(resources.items['textura1']).toBe('Texture: /textures/textura1.jpg');
+    expect(resources.items['cubemap1']).toBe('CubeTexture: /textures/cubemap1/');
+  });
+
+  test('debería emitir el evento ready cuando todos los recursos estén cargados', () => {
+    const callback = jest.fn();
+
+    // Subclase para evitar startLoading en el constructor
+    class TestResources extends Resources {
+      constructor(sources) {
+        super(sources);
+        this.loaded = this.toLoad - 1; // casi todo cargado
+      }
+
+      startLoading() {
+        // evitamos carga automática
+      }
+    }
+
+    const newRes = new TestResources(mockSources);
+    newRes.on('ready', callback);
+
+    // Simulamos carga del último recurso
+    newRes.sourceLoaded(mockSources[0], 'Archivo-final');
+
+    expect(callback).toHaveBeenCalled();
+  });
+
+  test('debería incrementar "loaded" al cargar un recurso', () => {
+    const initialLoaded = resources.loaded;
+    const source = { name: 'extra', type: 'texture', path: '/textures/extra.jpg' };
+
+    resources.sourceLoaded(source, 'TextureData');
+    expect(resources.loaded).toBe(initialLoaded + 1);
+    expect(resources.items['extra']).toBe('TextureData');
   });
 });
